@@ -1,70 +1,62 @@
 #include <iostream>
 #include <vector>
-#include <cstdlib>  // srand, rand
-#include <ctime>    // time
-#include <unistd.h> // fork
-#include <sys/wait.h> // wait
+#include <cstdlib>
+#include <ctime>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-std::vector<std::string> lista_nombres; // Variable global para almacenar nombres
-std::vector<std::string> frases = {
-    "Hoy es un gran día, ",
-    "Sigue tus sueños, ",
-    "Nunca te rindas, ",
-    "El esfuerzo siempre tiene recompensa, ",
-    "Cada día es una nueva oportunidad, "
-}; // Lista de frases aleatorias
+using namespace std;
 
-void añadir_nombre(const std::string& nombre) {
-    lista_nombres.push_back(nombre);
+// Declaració de la variable global
+vector<string> noms;
+
+void afegirNom(const string& nom) {
+    noms.push_back(nom);
 }
 
-std::string obtener_frase_aleatoria() {
-    int indice_frase = rand() % frases.size();
-    return frases[indice_frase];
+void mostrarFraseAleatoria() {
+    srand(time(nullptr));
+    if (!noms.empty()) {
+        int index = rand() % noms.size();
+        cout << "El procés " << getpid() << " ha triat el nom: " << noms[index] << endl;
+    }
 }
 
 int main() {
-    srand(time(nullptr)); // Inicializamos la semilla para la generación de números aleatorios
+    srand(time(nullptr));
+    int N;
+    cout << "Introduïu el nombre de processos a crear: ";
+    cin >> N;
 
-    int cantidad_procesos;
-    std::cout << "Introduce la cantidad de procesos a crear: ";
-    std::cin >> cantidad_procesos;
+    // Inicialitzar el generador de números aleatoris
 
-    // El proceso padre añade un nombre inicial
-    // Creamos la cantidad especificada de procesos
-    for (int i = 0; i < cantidad_procesos; ++i) {
+    // Demanar els noms abans de crear els processos
+    vector<string> nomsProc(N);
+    for (int i = 0; i < N; i++) {
+        cout << "Introduïu el nom per al procés " << (i + 1) << ": ";
+        cin >> nomsProc[i];
+    }
+
+    // Crear els processos
+    for (int i = 0; i < N; i++) {
         pid_t pid = fork();
-        if (pid == 0) { // Proceso hijo
-            _exit(0); // Terminamos el proceso hijo
-        }
-        if (pid > 0) {
-            wait(nullptr); // Esperamos a que termine el proceso hijo
 
-            // El proceso padre recoge el nombre de cada hijo
-            std::string nombre_recibido;
-            std::cout << "Proceso hijo #" << i + 1 << ", introduce un nombre: ";
-            std::cin >> nombre_recibido;
-            añadir_nombre(nombre_recibido); // Añadimos el nombre
-        }
-        else {
-            std::cerr << "Error al crear el proceso!" << std::endl;
-            return 1;
+        if (pid == 0) {  // Procés fill
+            afegirNom(nomsProc[i]);  // Afegir el nom corresponent
+            mostrarFraseAleatoria();  // Mostrar una frase amb un nom triat aleatòriament
+            exit(0);  // Sortir del procés fill
+        } else if (pid < 0) {
+            cerr << "Error en crear el procés." << endl;
+            exit(1);
         }
     }
 
-    // El proceso padre muestra todos los nombres finales
-    std::cout << "Lista final de nombres:\n";
-    for (const auto& nombre : lista_nombres) {
-        std::cout << nombre << std::endl;
+    // Esperar que tots els processos fills acabin
+    for (int i = 0; i < N; i++) {
+        wait(NULL);
     }
 
-    // Seleccionamos un nombre y una frase aleatoria
-    srand(static_cast<unsigned int>(time(nullptr)) + lista_nombres.size()); // Semilla basada en tiempo + tamaño de la lista
-    std::string nombre_final = lista_nombres[rand() % lista_nombres.size()];
-    std::string frase_final = obtener_frase_aleatoria();
-
-    // Mostramos el resultado final
-    std::cout << frase_final << nombre_final << std::endl;
-
+    cout << "Tots els processos han acabat." << endl;
     return 0;
 }
